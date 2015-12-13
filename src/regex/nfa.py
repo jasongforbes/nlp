@@ -76,14 +76,16 @@ class NFA(f.FiniteAutomaton):
                 non_empty_states.add(row)
         new_states       = dict(zip([q for q in non_empty_states], range(len(non_empty_states))))
         #remove empty-states
-        transition_table = [transition_function for (row,transition_function) in enumerate(transition_table) if row in non_empty_states ]
+        transition_table_new = [[]]*len(new_states)
+        for i in new_states.keys(): 
+            transition_table_new[new_states[i]] = transition_table[i]
         #remove state-transitions to empty states
-        for row in range(len(transition_table)):
+        for row in range(len(transition_table_new)):
             for col in range(len(transition_function)):
-                transition_table[row][col] = [new_states[a] for a in transition_table[row][col] if a in new_states.keys()]
+                transition_table_new[row][col] = [new_states[a] for a in transition_table_new[row][col] if a in new_states.keys()]
         start_states = [new_states[a] for a in start_states      if a in new_states.keys()]
         end_states   = [new_states[a] for a in self.end_states   if a in new_states.keys()]
-        return NFA([], alphabet, transition_table, start_states, end_states)
+        return NFA([], alphabet, transition_table_new, start_states, end_states)
     
     class RegexAutomatonConstructor(object):
         def __init__(self, alphabet, parsed_regex, start, end):

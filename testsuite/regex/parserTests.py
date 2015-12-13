@@ -45,6 +45,7 @@ class TestParsser(unittest.TestCase):
         self.assertListEqual(p.RegexParser().parse("(a|b)+c*"), ['a','b',o.getOperator('|'), o.getOperator('+'), 'c', o.getOperator('*'), o.getSquenceOperator()])
         self.assertListEqual(p.RegexParser().parse("c(a|b)+"),  ['c','a','b', o.getOperator('|'), o.getOperator('+'), o.getSquenceOperator()])
         self.assertListEqual(p.RegexParser().parse("((a))"),    ['a'])
+        self.assertListEqual(p.RegexParser().parse("a+b+"),     ['a',o.getOperator('+'),'b',o.getOperator('+'),o.getSquenceOperator()])
         
     def testNFA(self):        
         #          string    states    alphabet
