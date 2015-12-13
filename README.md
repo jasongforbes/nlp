@@ -1,2 +1,2 @@
 # nlp
-Haskell algorithms for Natural Language Processing
+Python algorithms for Natural Language Processing
