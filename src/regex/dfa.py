@@ -14,6 +14,36 @@ class DFA(f.FiniteAutomaton):
     '''
     def __init__(self, alphabet, transition_table, start_state, end_states):
         super().__init__(alphabet, transition_table, start_state, end_states)
+        if len(start_state) > 1:
+            raise Exception("Too many start-states for a DFA.")
+        self.reset()
+    
+    def reset(self):
+        self._current_state = self.start_states[0]
+        self._accepted      = self._current_state in self.end_states
+        self._in_progress   = True
+    
+    @property 
+    def accepted(self):
+        return self._accepted
+    
+    @property
+    def in_progress(self):
+        return self._in_progress
+    
+    def accept_char(self, a):
+        if self._in_progress:
+            transition_function = self.transition_table[self._current_state]
+            col = self.get_column(a)
+            if col is None:
+                col = self.get_column(nfa.NFA.NOT_ALPHABET)
+            if transition_function[col]:
+                self._current_state = transition_function[col][0]
+                if not self._accepted:
+                    self._accepted = self._current_state in self.end_states
+            else:
+                self._in_progress = False
+        return self._in_progress
     
     @staticmethod
     def  powerset_construction(finite_automaton):

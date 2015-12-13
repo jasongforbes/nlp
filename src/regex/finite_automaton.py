@@ -26,7 +26,7 @@ class FiniteAutomaton(object):
         return desc
     
     def get_column(self, a):
-        return self._column_lookup[a]
+        return self._column_lookup.get(a)
     
     @property
     def start_states(self):
