@@ -19,7 +19,7 @@ class DFA(f.FiniteAutomaton):
         self.reset()
     
     def reset(self):
-        self._current_state = self.start_states[0]
+        self._current_state = self.start_states.copy().pop()
         self._accepted      = self._current_state in self.end_states
         self._in_progress   = True
     
@@ -38,7 +38,7 @@ class DFA(f.FiniteAutomaton):
             if col is None:
                 col = self.get_column(nfa.NFA.NOT_ALPHABET)
             if transition_function[col]:
-                self._current_state = transition_function[col][0]
+                self._current_state = transition_function[col].copy().pop()
                 if not self._accepted:
                     self._accepted = self._current_state in self.end_states
             else:
@@ -66,8 +66,8 @@ class DFA(f.FiniteAutomaton):
             self._new_states      = dict()
             self._transition_table= []
             
-            start                 = frozenset(epsillon_closure(set(self._finite_automaton.start_states)))
-            self._final_states    = set(self._finite_automaton.end_states)
+            start                 = frozenset(epsillon_closure(self._finite_automaton.start_states))
+            self._final_states    = self._finite_automaton.end_states
             
             self._add_unmarked(start)
             
@@ -77,9 +77,9 @@ class DFA(f.FiniteAutomaton):
                     U = frozenset(epsillon_closure(transitions))
                     if U:
                         self._add_unmarked(U)
-                        self._transition_table[self._new_states[T]][col].append(self._new_states[U])
+                        self._transition_table[self._new_states[T]][col].add(self._new_states[U])
                     
-            self._finite_automaton = DFA(finite_automaton.alphabet, self._transition_table, [self._new_states[start]], [self._new_states[frozenset(self._final_states)]])
+            self._finite_automaton = DFA(finite_automaton.alphabet, self._transition_table, set([self._new_states[start]]), set([self._new_states[frozenset(self._final_states)]]))
                                 
         @property
         def finitie_automaton(self):
@@ -90,7 +90,7 @@ class DFA(f.FiniteAutomaton):
                 self._states.add(U)
                 self._unmarked_states.add(frozenset(U))
                 self._new_states[U]=len(self._new_states)
-                self._transition_table.append([ []  for _ in range(len(self._finite_automaton.alphabet))  ])
+                self._transition_table.append([ set([])  for _ in range(len(self._finite_automaton.alphabet))  ])
                 if len(self._final_states.intersection(U)) > 0:
                     self._final_states = self._final_states.union(U)
                     

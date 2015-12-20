@@ -37,12 +37,12 @@ class NFA(f.FiniteAutomaton):
             alphabet.append(NFA.NOT_ALPHABET)
             alphabet.append(NFA.EPSILON) 
             transition_table = NFA.RegexAutomatonConstructor.get_transition_table(alphabet, parsed_regex)
-            super().__init__(alphabet, transition_table, [0], [1] )
+            super().__init__(alphabet, transition_table, set([0]), set([1]) )
         else:
             if (not start_states and 
                 not end_states):
-                start_states = [0]
-                end_states   = [1]
+                start_states = set([0])
+                end_states   = set([1])
             super().__init__(alphabet, transition_table, start_states, end_states )
         
     
@@ -55,36 +55,31 @@ class NFA(f.FiniteAutomaton):
                 if i == 0:
                     alphabet = sorted(set(row[1:]))
                 else:
-                    transition_table.append([[e for e in map(int,x.split(',')) if e >= 0] for i,x in enumerate(row) if i > 0])
+                    transition_table.append([set([e for e in map(int,x.split(',')) if e >= 0]) for i,x in enumerate(row) if i > 0 ])
         
         return NFA([], alphabet, transition_table)
     
     def to_eps_free(self):
-        start_states = [q for q in eps_closure(set(self.start_states), self)]
-        transition_table = []
-        alphabet = [a for a in self.alphabet if not a == NFA.EPSILON]
-        for row,transition_function in enumerate(self.transition_table):
-            transition_table.append( [ [] for _ in range(len(alphabet)) ] )
-            for col,a in enumerate(alphabet):
-                for q_prime in transition_function[self.get_column(a)]:
-                    Q = eps_closure(set([q_prime]), self)
-                    transition_table[row][col] = [q for q in Q]
+        start_states     = eps_closure(set(self.start_states), self)
+        alphabet         = [a for a in self.alphabet if not a == NFA.EPSILON]
+        
+        transition_table = [ [eps_closure(transition_function[self.get_column(a)], self) for a in alphabet]
+                             for transition_function in self.transition_table ]
+        
         #find non-empty states
-        non_empty_states = set(self.end_states)
-        for row,transition_function in enumerate(transition_table):
-            if [a for a in transition_function if len(a) > 0]:
-                non_empty_states.add(row)
-        new_states       = dict(zip([q for q in non_empty_states], range(len(non_empty_states))))
+        non_empty_states = set([row for row,transition_function in enumerate(transition_table) 
+                                if [a for a in transition_function if a] ])
+        non_empty_states = non_empty_states.union(self.end_states)
+
         #remove empty-states
-        transition_table_new = [[]]*len(new_states)
-        for i in new_states.keys(): 
-            transition_table_new[new_states[i]] = transition_table[i]
-        #remove state-transitions to empty states
-        for row in range(len(transition_table_new)):
-            for col in range(len(transition_function)):
-                transition_table_new[row][col] = [new_states[a] for a in transition_table_new[row][col] if a in new_states.keys()]
-        start_states = [new_states[a] for a in start_states      if a in new_states.keys()]
-        end_states   = [new_states[a] for a in self.end_states   if a in new_states.keys()]
+        new_states           = dict(zip(sorted(non_empty_states), range(len(non_empty_states))))
+        transition_table_new = [[set([ new_states[q] for q in non_empty_states.intersection(states)])
+                                 for states in transition_function]
+                                 for row,transition_function in enumerate(transition_table) if row in non_empty_states]
+        #construct new NFA
+        
+        start_states = set([new_states[a] for a in start_states      if a in new_states.keys()])
+        end_states   = set([new_states[a] for a in self.end_states   if a in new_states.keys()])
         return NFA([], alphabet, transition_table_new, start_states, end_states)
     
     class RegexAutomatonConstructor(object):
@@ -93,7 +88,7 @@ class NFA(f.FiniteAutomaton):
             numSymbols             = len([element for element in parsed_regex if element != regOp.getSquenceOperator() ])
             numConcats             = len(parsed_regex) - numSymbols
             self._numStates        = max([2,2*numSymbols - numConcats])
-            self._transition_table = [ [ []  for _ in range(len(alphabet))  ] for _ in range(self._numStates)]
+            self._transition_table = [ [ set([])  for _ in range(len(alphabet))  ] for _ in range(self._numStates)]
             self.__constructStates__(parsed_regex, start, end, 2)
 
         
@@ -112,14 +107,14 @@ class NFA(f.FiniteAutomaton):
                 if isinstance(elem, regOp.AssociativeOperator):
                     (newStates, epsTransitions, num_nodes) = elem.constructState(start, end, num_nodes)
                     for newTransition in epsTransitions:
-                        self._transition_table[newTransition[0]][self._columns[NFA.EPSILON]].append(newTransition[1])
+                        self._transition_table[newTransition[0]][self._columns[NFA.EPSILON]].add(newTransition[1])
                     for newState in newStates:
                         (parsed_regex, num_nodes) = self.__constructStates__(parsed_regex, newState[0], newState[1], num_nodes)
                 elif isinstance(elem, str):
-                    self._transition_table[start][self._columns[elem]].append(end)
+                    self._transition_table[start][self._columns[elem]].add(end)
                 else:
                     raise Exception("unknown element %s of type %s", repr(elem), repr(type(elem)))
                 return (parsed_regex, num_nodes)
             else:
-                self._transition_table[start][self._columns[NFA.EPSILON]].append(end)
+                self._transition_table[start][self._columns[NFA.EPSILON]].add(end)
                 return ([], self._numStates)
